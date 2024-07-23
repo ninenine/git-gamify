@@ -36,7 +36,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     save_scores(&scores)?;
 
     let user_score = *scores.get(&user).unwrap_or(&0);
-    println!("⭐ Hey {}! Your current score is {}. Keep rocking! ⭐", user, user_score);
+    println!(
+        "⭐ Hey {}! Your current score is {}. Keep rocking! ⭐",
+        user, user_score
+    );
 
     check_badges(&user, user_score, &all_commits)?;
     display_leaderboard(&scores);
@@ -122,13 +125,18 @@ fn save_scores(scores: &HashMap<String, u32>) -> Result<(), Box<dyn std::error::
         .map_err(|e| format!("Failed to open score file {}: {}", SCORE_FILE, e))?;
 
     for (user, score) in scores {
-        writeln!(file, "{}:{}", user, score).map_err(|e| format!("Failed to write score: {}", e))?;
+        writeln!(file, "{}:{}", user, score)
+            .map_err(|e| format!("Failed to write score: {}", e))?;
     }
 
     Ok(())
 }
 
-fn check_badges(user: &str, score: u32, commits: &[Commit]) -> Result<(), Box<dyn std::error::Error>> {
+fn check_badges(
+    user: &str,
+    score: u32,
+    commits: &[Commit],
+) -> Result<(), Box<dyn std::error::Error>> {
     let badge_conditions = vec![
         BadgeCondition {
             name: "First Commit",
@@ -242,14 +250,20 @@ fn check_badges(user: &str, score: u32, commits: &[Commit]) -> Result<(), Box<dy
         .open(BADGE_FILE)
         .map_err(|e| format!("Failed to open badge file {}: {}", BADGE_FILE, e))?;
 
-    let reader = BufReader::new(file.try_clone().map_err(|e| format!("Failed to clone file handle: {}", e))?);
+    let reader = BufReader::new(
+        file.try_clone()
+            .map_err(|e| format!("Failed to clone file handle: {}", e))?,
+    );
     let existing_badges: HashSet<String> = reader.lines().filter_map(Result::ok).collect();
 
     for badge in badge_conditions {
         let badge_key = format!("{}:{}", user, badge.name);
         if !existing_badges.contains(&badge_key) && (badge.condition)(user, score, commits) {
             writeln!(file, "{}", badge_key).map_err(|e| format!("Failed to write badge: {}", e))?;
-            println!("🏆 Congratulations! You've earned the '{}' badge! 🏆", badge.name);
+            println!(
+                "🏆 Congratulations! You've earned the '{}' badge! 🏆",
+                badge.name
+            );
         }
     }
 

@@ -12,11 +12,13 @@ Git Gamify is a fun and engaging way to gamify your Git workflow. It tracks your
 ## Installation
 
 1. Clone this repository:
+
    ```
    git clone https://github.com/ninenine/git-gamify.git
    ```
 
 2. Build the project:
+
    ```
    cd git-gamify
    cargo build --release
@@ -25,17 +27,20 @@ Git Gamify is a fun and engaging way to gamify your Git workflow. It tracks your
 3. Create a script in your project's Git hooks directory to call `git-gamify` along with other pre-commit hooks:
 
    1. Ensure you have an existing pre-commit hook or create a placeholder if needed:
+
       ```
       touch /path/to/your/project/.git/hooks/pre-commit
       chmod +x /path/to/your/project/.git/hooks/pre-commit
       ```
 
    2. Copy the compiled `git-gamify` binary to a location accessible by the script. For example, copying it to the hooks directory:
+
       ```
       cp target/release/git-gamify /path/to/your/project/.git/hooks/git-gamify
       ```
 
    3. Update the `pre-commit` script to call `git-gamify`:
+
       ```sh
       #!/bin/sh
       # Your existing pre-commit hook commands here
@@ -46,9 +51,21 @@ Git Gamify is a fun and engaging way to gamify your Git workflow. It tracks your
       # Add more hooks if needed
       ```
 
+   4. Run `git commit` to trigger the pre-commit hook and start using Git Gamify!
+
 ## How It Works
 
 Git Gamify runs automatically after each commit. It analyzes your entire Git history, calculates your score, and checks for any new badges you've earned.
+
+1. **Collecting Commits**:
+
+   - `git log --pretty=format:%H%n%an%n%ad%n%s --date=iso --numstat` is executed to retrieve commit details.
+   - The output is parsed to gather information about each commit, such as the author, date, message, lines added, lines deleted, and files changed.
+
+2. **Retrieving Git Username**:
+   - `git config user.name` is executed to get the name of the user making the commits. This is used to attribute scores and badges to the correct user.
+
+By using these Git commands, Git Gamify can gather all necessary data to track contributions, calculate scores, and award badges based on the entire history of the repository.
 
 ### Earning Points
 
@@ -82,7 +99,7 @@ After each commit, Git Gamify will display a leaderboard showing the top 10 cont
 
 ## Contributing
 
-We welcome contributions to Git Gamify! Please feel free to submit issues, fork the repository and send pull requests!
+All contibutions are welcome, please feel free to submit issues, fork the repository and send pull requests.
 
 ## License
 
