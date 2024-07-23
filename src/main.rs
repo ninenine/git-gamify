@@ -22,20 +22,29 @@ struct BadgeCondition {
 }
 
 fn main() {
-    let all_commits = get_all_commits();
-    let user = get_git_user();
-
-    let scores = calculate_scores(&all_commits);
-    save_scores(&scores);
-
-    let user_score = *scores.get(&user).unwrap_or(&0);
-    println!("Your total score is {}.", user_score);
-
-    check_badges(&user, user_score, &all_commits);
-    display_leaderboard(&scores);
+    match run() {
+        Ok(()) => println!("🎉 Hooray! All set and ready to go! 🎉"),
+        Err(e) => eprintln!("🚨 Oops! Something went wrong: {}", e),
+    }
 }
 
-fn get_all_commits() -> Vec<Commit> {
+fn run() -> Result<(), Box<dyn std::error::Error>> {
+    let all_commits = get_all_commits()?;
+    let user = get_git_user()?;
+
+    let scores = calculate_scores(&all_commits);
+    save_scores(&scores)?;
+
+    let user_score = *scores.get(&user).unwrap_or(&0);
+    println!("⭐ Hey {}! Your current score is {}. Keep rocking! ⭐", user, user_score);
+
+    check_badges(&user, user_score, &all_commits)?;
+    display_leaderboard(&scores);
+
+    Ok(())
+}
+
+fn get_all_commits() -> Result<Vec<Commit>, Box<dyn std::error::Error>> {
     let output = Command::new("git")
         .args(&[
             "log",
@@ -44,7 +53,7 @@ fn get_all_commits() -> Vec<Commit> {
             "--numstat",
         ])
         .output()
-        .expect("Failed to get git log");
+        .map_err(|e| format!("Failed to get git log: {}", e))?;
 
     let output_str = String::from_utf8_lossy(&output.stdout);
     let mut commits = Vec::new();
@@ -69,9 +78,12 @@ fn get_all_commits() -> Vec<Commit> {
             }
         }
 
+        let date_parsed = NaiveDateTime::parse_from_str(date, "%Y-%m-%d %H:%M:%S %z")
+            .map_err(|e| format!("Failed to parse date '{}': {}", date, e))?;
+
         commits.push(Commit {
             author: author.to_string(),
-            date: NaiveDateTime::parse_from_str(date, "%Y-%m-%d %H:%M:%S %z").unwrap(),
+            date: date_parsed,
             message: message.to_string(),
             lines_added,
             lines_deleted,
@@ -79,7 +91,7 @@ fn get_all_commits() -> Vec<Commit> {
         });
     }
 
-    commits
+    Ok(commits)
 }
 
 fn calculate_scores(commits: &[Commit]) -> HashMap<String, u32> {
@@ -101,20 +113,22 @@ fn calculate_points(lines_added: u32, lines_deleted: u32, files_changed: u32) ->
     lines_added + lines_deleted / 2 + files_changed * 5
 }
 
-fn save_scores(scores: &HashMap<String, u32>) {
+fn save_scores(scores: &HashMap<String, u32>) -> Result<(), Box<dyn std::error::Error>> {
     let mut file = OpenOptions::new()
         .write(true)
         .truncate(true)
         .create(true)
         .open(SCORE_FILE)
-        .unwrap();
+        .map_err(|e| format!("Failed to open score file {}: {}", SCORE_FILE, e))?;
 
     for (user, score) in scores {
-        writeln!(file, "{}:{}", user, score).unwrap();
+        writeln!(file, "{}:{}", user, score).map_err(|e| format!("Failed to write score: {}", e))?;
     }
+
+    Ok(())
 }
 
-fn check_badges(user: &str, score: u32, commits: &[Commit]) {
+fn check_badges(user: &str, score: u32, commits: &[Commit]) -> Result<(), Box<dyn std::error::Error>> {
     let badge_conditions = vec![
         BadgeCondition {
             name: "First Commit",
@@ -226,39 +240,46 @@ fn check_badges(user: &str, score: u32, commits: &[Commit]) {
         .append(true)
         .create(true)
         .open(BADGE_FILE)
-        .unwrap();
+        .map_err(|e| format!("Failed to open badge file {}: {}", BADGE_FILE, e))?;
 
-    let reader = BufReader::new(file.try_clone().unwrap());
-    let existing_badges: HashSet<String> = reader.lines().map(|l| l.unwrap()).collect();
+    let reader = BufReader::new(file.try_clone().map_err(|e| format!("Failed to clone file handle: {}", e))?);
+    let existing_badges: HashSet<String> = reader.lines().filter_map(Result::ok).collect();
 
     for badge in badge_conditions {
         let badge_key = format!("{}:{}", user, badge.name);
         if !existing_badges.contains(&badge_key) && (badge.condition)(user, score, commits) {
-            writeln!(file, "{}", badge_key).unwrap();
-            println!("Congratulations! You've earned the '{}' badge!", badge.name);
+            writeln!(file, "{}", badge_key).map_err(|e| format!("Failed to write badge: {}", e))?;
+            println!("🏆 Congratulations! You've earned the '{}' badge! 🏆", badge.name);
         }
     }
+
+    Ok(())
 }
 
 fn display_leaderboard(scores: &HashMap<String, u32>) {
-    println!("Leaderboard (Top 10):");
+    println!("📊 Leaderboard (Top 10): 📊");
     let mut sorted_scores: Vec<_> = scores.iter().collect();
     sorted_scores.sort_by(|a, b| b.1.cmp(a.1));
 
     for (i, (user, score)) in sorted_scores.iter().take(10).enumerate() {
-        println!("{}. {}: {}", i + 1, user, score);
+        println!("{}. {}: {} points", i + 1, user, score);
     }
 }
 
-fn get_git_user() -> String {
-    String::from_utf8(
-        Command::new("git")
-            .args(&["config", "user.name"])
-            .output()
-            .expect("Failed to get git user")
-            .stdout,
-    )
-    .unwrap()
-    .trim()
-    .to_string()
+fn get_git_user() -> Result<String, Box<dyn std::error::Error>> {
+    let output = Command::new("git")
+        .args(&["config", "user.name"])
+        .output()
+        .map_err(|e| format!("Failed to get git user: {}", e))?;
+
+    let user_name = String::from_utf8(output.stdout)
+        .map_err(|e| format!("Failed to parse git user name: {}", e))?
+        .trim()
+        .to_string();
+
+    if user_name.is_empty() {
+        return Err("Git user name is empty".into());
+    }
+
+    Ok(user_name)
 }
