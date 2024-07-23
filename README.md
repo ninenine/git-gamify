@@ -22,15 +22,29 @@ Git Gamify is a fun and engaging way to gamify your Git workflow. It tracks your
    cargo build --release
    ```
 
-3. Copy the compiled binary to your project's Git hooks directory:
-   ```
-   cp target/release/git-gamify /path/to/your/project/.git/hooks/post-commit
-   ```
+3. Create a script in your project's Git hooks directory to call `git-gamify` along with other pre-commit hooks:
 
-4. Make the hook executable:
-   ```
-   chmod +x /path/to/your/project/.git/hooks/post-commit
-   ```
+   1. Ensure you have an existing pre-commit hook or create a placeholder if needed:
+      ```
+      touch /path/to/your/project/.git/hooks/pre-commit
+      chmod +x /path/to/your/project/.git/hooks/pre-commit
+      ```
+
+   2. Copy the compiled `git-gamify` binary to a location accessible by the script. For example, copying it to the hooks directory:
+      ```
+      cp target/release/git-gamify /path/to/your/project/.git/hooks/git-gamify
+      ```
+
+   3. Update the `pre-commit` script to call `git-gamify`:
+      ```sh
+      #!/bin/sh
+      # Your existing pre-commit hook commands here
+
+      # Run git-gamify
+      /path/to/your/project/.git/hooks/git-gamify
+
+      # Add more hooks if needed
+      ```
 
 ## How It Works
 
