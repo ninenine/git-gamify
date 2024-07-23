@@ -64,7 +64,7 @@ Earn badges by achieving specific milestones:
 
 ## Leaderboard
 
-After each commit, Git Gamify will display a leaderboard showing the top 5 contributors based on their total points.
+After each commit, Git Gamify will display a leaderboard showing the top 10 contributors based on their total points.
 
 ## Contributing
 
